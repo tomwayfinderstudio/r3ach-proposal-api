@@ -1,6 +1,6 @@
-// Simple test version - replace your api/index.js with this temporarily
+// Ultra simple API - CommonJS format
 
-export default function handler(req, res) {
+function handler(req, res) {
   // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -13,21 +13,21 @@ export default function handler(req, res) {
 
   const { method, url } = req;
 
-  if (method === 'GET' && url === '/api/health') {
+  if (method === 'GET' && url.includes('/api/health')) {
     return res.status(200).json({
       success: true,
       message: 'R3ACH Proposal API is working!',
-      timestamp: new Date().toISOString(),
-      environment: {
-        hasSupabaseUrl: !!process.env.SUPABASE_URL,
-        hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
-      }
+      timestamp: new Date().toISOString()
     });
   }
 
-  return res.status(404).json({
-    error: 'Endpoint not found',
+  return res.status(200).json({
+    success: true,
+    message: 'API is working!',
     method: method,
-    url: url
+    url: url,
+    note: 'This is a test response'
   });
 }
+
+module.exports = handler;
