@@ -26,63 +26,215 @@ export default async function handler(req, res) {
         });
       }
 
-      // Clients endpoint
+      // Clients endpoint - try Supabase first, fallback to demo data
       if (endpoint === 'clients' || url?.includes('clients')) {
-        return res.status(200).json({
-          success: true,
-          message: 'Clients loaded successfully',
-          data: [
-            { id: '1', name: 'DeFi Protocol X', deal_value: 150000, status: 'Qualified' },
-            { id: '2', name: 'NFT Marketplace Y', deal_value: 85000, status: 'Proposal Sent' },
-            { id: '3', name: 'L2 Solution Z', deal_value: 300000, status: 'Discovery' }
-          ]
-        });
+        try {
+          // Try to fetch from Supabase if credentials are available
+          if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            const supabaseResponse = await fetch(
+              `${process.env.SUPABASE_URL}/rest/v1/cached_clients?select=*&order=last_synced.desc&limit=50`,
+              {
+                headers: {
+                  'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                  'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (supabaseResponse.ok) {
+              const clients = await supabaseResponse.json();
+              if (clients && clients.length > 0) {
+                return res.status(200).json({
+                  success: true,
+                  message: 'Clients loaded from Notion/Supabase',
+                  data: clients,
+                  source: 'supabase'
+                });
+              }
+            }
+          }
+
+          // Fallback to demo data
+          return res.status(200).json({
+            success: true,
+            message: 'Clients loaded (demo data)',
+            data: [
+              { id: '1', name: 'DeFi Protocol X', deal_value: 150000, status: 'Qualified', notion_id: 'demo-1' },
+              { id: '2', name: 'NFT Marketplace Y', deal_value: 85000, status: 'Proposal Sent', notion_id: 'demo-2' },
+              { id: '3', name: 'L2 Solution Z', deal_value: 300000, status: 'Discovery', notion_id: 'demo-3' }
+            ],
+            source: 'demo'
+          });
+
+        } catch (error) {
+          console.error('Clients endpoint error:', error);
+          // Always return demo data on error
+          return res.status(200).json({
+            success: true,
+            message: 'Clients loaded (error fallback)',
+            data: [
+              { id: '1', name: 'DeFi Protocol X', deal_value: 150000, status: 'Qualified' },
+              { id: '2', name: 'NFT Marketplace Y', deal_value: 85000, status: 'Proposal Sent' },
+              { id: '3', name: 'L2 Solution Z', deal_value: 300000, status: 'Discovery' }
+            ],
+            source: 'error-fallback'
+          });
+        }
       }
 
-      // Creators endpoint
+      // Creators endpoint - try Supabase first, fallback to demo data
       if (endpoint === 'creators' || url?.includes('creators')) {
-        return res.status(200).json({
-          success: true,
-          message: 'Creators loaded successfully',
-          data: [
-            { 
-              id: '1', 
-              name: 'CryptoInfluencer1', 
-              management_status: 'Full Management', 
-              pricing_tier: '$$$', 
-              monthly_impressions: 2500000,
-              content_types: ['𝕏 Posts', 'Spaces', 'Videos']
-            },
-            { 
-              id: '2', 
-              name: 'DeFiExpert2', 
-              management_status: 'R3ACH NTWRK', 
-              pricing_tier: '$$', 
-              monthly_impressions: 1200000,
-              content_types: ['𝕏 Posts', 'Threads']
+        try {
+          if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            let supabaseQuery = `${process.env.SUPABASE_URL}/rest/v1/cached_creators?select=*&order=monthly_impressions.desc&limit=100`;
+            
+            // Add search filter if provided
+            if (query.search) {
+              supabaseQuery += `&or=(name.ilike.*${query.search}*,niche_focus.ilike.*${query.search}*)`;
             }
-          ]
-        });
+
+            const supabaseResponse = await fetch(supabaseQuery, {
+              headers: {
+                'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (supabaseResponse.ok) {
+              const creators = await supabaseResponse.json();
+              if (creators && creators.length > 0) {
+                return res.status(200).json({
+                  success: true,
+                  message: 'Creators loaded from Notion/Supabase',
+                  data: creators,
+                  source: 'supabase'
+                });
+              }
+            }
+          }
+
+          // Fallback to demo data
+          return res.status(200).json({
+            success: true,
+            message: 'Creators loaded (demo data)',
+            data: [
+              { 
+                id: '1', 
+                name: 'CryptoInfluencer1', 
+                management_status: 'Full Management', 
+                pricing_tier: '$$$', 
+                monthly_impressions: 2500000,
+                content_types: ['𝕏 Posts', 'Spaces', 'Videos'],
+                notion_id: 'demo-c1'
+              },
+              { 
+                id: '2', 
+                name: 'DeFiExpert2', 
+                management_status: 'R3ACH NTWRK', 
+                pricing_tier: '$$', 
+                monthly_impressions: 1200000,
+                content_types: ['𝕏 Posts', 'Threads'],
+                notion_id: 'demo-c2'
+              },
+              { 
+                id: '3', 
+                name: 'Web3Educator3', 
+                management_status: 'Full Management', 
+                pricing_tier: '$$', 
+                monthly_impressions: 800000,
+                content_types: ['Videos', 'Livestreams'],
+                notion_id: 'demo-c3'
+              }
+            ],
+            source: 'demo'
+          });
+
+        } catch (error) {
+          console.error('Creators endpoint error:', error);
+          return res.status(200).json({
+            success: true,
+            message: 'Creators loaded (error fallback)',
+            data: [
+              { id: '1', name: 'CryptoInfluencer1', management_status: 'Full Management', pricing_tier: '$$$', monthly_impressions: 2500000 },
+              { id: '2', name: 'DeFiExpert2', management_status: 'R3ACH NTWRK', pricing_tier: '$$', monthly_impressions: 1200000 }
+            ],
+            source: 'error-fallback'
+          });
+        }
       }
 
-      // Templates endpoint
+      // Templates endpoint - try Supabase first, fallback to demo data
       if (endpoint === 'templates' || url?.includes('templates')) {
-        return res.status(200).json({
-          success: true,
-          message: 'Templates loaded successfully',
-          data: [
-            { 
-              id: '1', 
-              name: 'Product Launch Template', 
-              template_type: ['Awareness', 'Adoption', 'Community']
-            },
-            { 
-              id: '2', 
-              name: 'Ambassador Program Template', 
-              template_type: ['Long-term', 'Community', 'Loyalty']
+        try {
+          if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            const supabaseResponse = await fetch(
+              `${process.env.SUPABASE_URL}/rest/v1/cached_templates?select=*&order=usage_count.desc&limit=20`,
+              {
+                headers: {
+                  'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+                  'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (supabaseResponse.ok) {
+              const templates = await supabaseResponse.json();
+              if (templates && templates.length > 0) {
+                return res.status(200).json({
+                  success: true,
+                  message: 'Templates loaded from Notion/Supabase',
+                  data: templates,
+                  source: 'supabase'
+                });
+              }
             }
-          ]
-        });
+          }
+
+          // Fallback to demo data
+          return res.status(200).json({
+            success: true,
+            message: 'Templates loaded (demo data)',
+            data: [
+              { 
+                id: '1', 
+                name: 'Product Launch Template', 
+                template_type: ['Awareness', 'Adoption', 'Community'],
+                usage_count: 12,
+                notion_id: 'demo-t1'
+              },
+              { 
+                id: '2', 
+                name: 'Ambassador Program Template', 
+                template_type: ['Long-term', 'Community', 'Loyalty'],
+                usage_count: 8,
+                notion_id: 'demo-t2'
+              },
+              { 
+                id: '3', 
+                name: 'Narrative Campaign Template', 
+                template_type: ['Thought Leadership', 'Educational'],
+                usage_count: 15,
+                notion_id: 'demo-t3'
+              }
+            ],
+            source: 'demo'
+          });
+
+        } catch (error) {
+          console.error('Templates endpoint error:', error);
+          return res.status(200).json({
+            success: true,
+            message: 'Templates loaded (error fallback)',
+            data: [
+              { id: '1', name: 'Product Launch Template', template_type: ['Awareness', 'Adoption'] },
+              { id: '2', name: 'Ambassador Program Template', template_type: ['Long-term', 'Community'] }
+            ],
+            source: 'error-fallback'
+          });
+        }
       }
 
       // Test endpoint
